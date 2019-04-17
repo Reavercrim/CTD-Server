@@ -1,0 +1,5 @@
+#ignore folder
+build
+
+#ignore executable
+bin/*
