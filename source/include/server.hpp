@@ -13,18 +13,21 @@ private:
     std::vector<bool> m_clientConnected;
     std::vector<IpPort> m_clientIpPort;
     sf::UdpSocket m_socket;
+    std::vector<sf::Vector2f> m_rectVect;
 
 
 public:
     Server(int maxClients, int serverPort);
-    int FindFreeClientIndex() const;
-    int FindExistingClientIndex( const IpPort & ipPort ) const;
-    bool IsClientConnected( int clientIndex ) const;
-    const IpPort & GetClientIpPort( int clientIndex ) const;
+    int findFreeClientIndex() const;
+    int findExistingClientIndex( const IpPort & ipPort ) const;
+    bool isClientConnected( int clientIndex ) const;
+    const IpPort & getClientIpPort( int clientIndex ) const;
     void assignClientToSlot(int slotId, IpPort ipPort);
     void processPacket( IpPort ipPort, sf::Packet packet);
     void handleNewConnection( IpPort ipPort );
+    void handleInputs( IpPort ipPort, sf::Packet packet );
     void receivePacket();
+    void updateClients();
     void listen();
 
 

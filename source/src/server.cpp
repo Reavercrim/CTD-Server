@@ -2,11 +2,12 @@
 #include "server.hpp"
 
 Server::Server(int maxClients, int serverPort):m_maxClients(maxClients),
-                                                        m_numConnectedClients(0)
+                                               m_numConnectedClients(0),
+                                               m_clientConnected(maxClients,false),
+                                               m_clientIpPort(maxClients)
 {
-    m_clientConnected.reserve(maxClients);
-    m_clientIpPort.reserve(maxClients);
 
+    m_rectVect.reserve(maxClients);
 
     std::vector<bool>::iterator it;
     for (it = m_clientConnected.begin(); it != m_clientConnected.end(); ++it)
@@ -16,7 +17,7 @@ Server::Server(int maxClients, int serverPort):m_maxClients(maxClients),
     m_socket.setBlocking(false);
 }
 
-int Server::FindFreeClientIndex() const
+int Server::findFreeClientIndex() const
 {
     for ( int i = 0; i < m_maxClients; i++ )
     {
@@ -27,7 +28,7 @@ int Server::FindFreeClientIndex() const
 }
 
 
-int Server::FindExistingClientIndex( const IpPort & ipPort ) const
+int Server::findExistingClientIndex( const IpPort & ipPort ) const
 {
 
     for ( int i = 0; i < m_maxClients; ++i )
@@ -38,12 +39,12 @@ int Server::FindExistingClientIndex( const IpPort & ipPort ) const
     return -1;
 }
 
-bool Server::IsClientConnected( int clientIndex ) const
+bool Server::isClientConnected( int clientIndex ) const
 {
     return m_clientConnected[clientIndex];
 }
 
-const IpPort & Server::GetClientIpPort( int clientIndex ) const
+const IpPort & Server::getClientIpPort( int clientIndex ) const
 {
     return m_clientIpPort[clientIndex];
 }
@@ -54,6 +55,10 @@ void Server::assignClientToSlot(int slotId, IpPort ipPort)
     m_clientConnected[slotId] = true;
     m_clientIpPort[slotId] = ipPort;
     std::cout << slotId << " : " << ipPort.first << ":" << ipPort.second << std::endl;
+
+
+    m_rectVect.push_back(sf::Vector2f(0,0));
+    std::cout << m_rectVect.size() << std::endl;
 }
 
 void Server::processPacket( IpPort ipPort, sf::Packet packet )
@@ -66,6 +71,9 @@ void Server::processPacket( IpPort ipPort, sf::Packet packet )
         case 1:
             handleNewConnection(ipPort);
             break;
+        case 10:
+            handleInputs(ipPort,packet);
+            break;
         default:
             break;
     }
@@ -74,10 +82,31 @@ void Server::processPacket( IpPort ipPort, sf::Packet packet )
 
 void Server::handleNewConnection( IpPort ipPort )
 {
-    int slotId = FindFreeClientIndex();
+    int slotId = findFreeClientIndex();
     if ( slotId != -1 )
         assignClientToSlot(slotId, ipPort);
 
+}
+
+void Server::handleInputs( IpPort ipPort, sf::Packet packet)
+{
+    int index = findExistingClientIndex( ipPort );
+
+    if ( index > -1 )
+    {
+        std::string input;
+        packet >> input;
+
+        if (input == "u")
+                m_rectVect.at(index).y--;
+        else if (input == "d")
+                m_rectVect.at(index).y++;
+        else if (input == "l")
+                m_rectVect.at(index).x--;
+        else if (input == "r")
+                m_rectVect.at(index).x++;
+
+    }
 }
 
 void Server::receivePacket()
@@ -87,11 +116,7 @@ void Server::receivePacket()
     unsigned short port;
 
 
-    if (m_socket.receive(packet, sender, port) != sf::Socket::Done)
-    {
-
-    }
-    else
+    if (m_socket.receive(packet, sender, port) == sf::Socket::Done)
         processPacket(IpPort(sender,port),packet);
 }
 
@@ -104,22 +129,51 @@ void Server::listen()
     while (true)
     {
 
-        bool updateClients = false;
+        bool clientsUpdate = false;
 
         timeSinceLastUpdate += clock.restart();
         if (timeSinceLastUpdate > TimePerFrame)
         {
             timeSinceLastUpdate -= TimePerFrame;
-            updateClients = true;
+            clientsUpdate = true;
         }
 
         receivePacket();
 
-
-        if(updateClients)
+        if(clientsUpdate)
         {
-
+            updateClients();
         }
-
     }
+}
+
+void Server::updateClients()
+{
+    sf::Packet p;
+    sf::Uint16 numberObject(m_rectVect.size());
+    p << numberObject;
+
+
+    for (auto it = m_rectVect.begin(); it != m_rectVect.end(); ++it)
+    {
+            p << it->x;
+            p << it->y;
+    }
+
+    sf::Packet cp;
+    IpPort ipPort;
+
+    for ( sf::Uint16 i = 0; i < m_maxClients; ++i )
+    {
+        if ( m_clientConnected[i])
+        {
+            cp = p;
+            cp << i;
+
+            ipPort = getClientIpPort(i);
+
+            m_socket.send(cp,ipPort.first,ipPort.second);
+        }
+    }
+
 }
