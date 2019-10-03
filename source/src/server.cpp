@@ -57,7 +57,7 @@ void Server::assignClientToSlot(int slotId, IpPort ipPort)
     std::cout << slotId << " : " << ipPort.first << ":" << ipPort.second << std::endl;
 
 
-    m_rectVect.push_back(sf::Vector2f(0,0));
+    m_rectVect.push_back(sf::Vector2f(2048,2048));
     std::cout << m_rectVect.size() << std::endl;
 }
 
@@ -98,13 +98,13 @@ void Server::handleInputs( IpPort ipPort, sf::Packet packet)
         packet >> input;
 
         if (input == "u")
-                m_rectVect.at(index).y--;
+                m_rectVect.at(index).y -= 5;
         else if (input == "d")
-                m_rectVect.at(index).y++;
+                m_rectVect.at(index).y += 5;
         else if (input == "l")
-                m_rectVect.at(index).x--;
+                m_rectVect.at(index).x -= 5;
         else if (input == "r")
-                m_rectVect.at(index).x++;
+                m_rectVect.at(index).x += 5;
 
     }
 }
